@@ -9,12 +9,12 @@ import random, string
 
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
+from oauth2client.client import AccessTokenCredentials
 import httplib2, json, requests
 
 app = Flask(__name__)
 
-CLIENT_ID = json.loads(
-    open('client_secrets.json', 'r').read())['web']['client_id']
+CLIENT_ID = json.loads(open('client_secrets.json', 'r').read())['web']['client_id']
 APPLICATION_NAME = "Restaurant Menu Application"
 
 #Connect to Database and create database session
@@ -28,11 +28,13 @@ session = DBSession()
 def showLogin():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
                     for x in xrange(32))
-    login_session['state'] = state
+    login_session['state'] = state    
     return render_template('login.html', STATE=state)
 
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
+    print('Inicio /gconnect')
+
     # Validate state token
     if request.args.get('state') != login_session['state']:
         response = make_response(json.dumps('Invalid state parameter.'), 401)
@@ -42,18 +44,22 @@ def gconnect():
     code = request.data
 
     try:
+        print('Inicio do try/catch')
+
         # Upgrade the authorization code into a credentials object
-        oauth_flow = flow_from_clientsecrets('client_secrets.json', scope='')
+        oauth_flow = flow_from_clientsecrets('client_secrets.json', scope='https://www.googleapis.com/auth/plus.me')
         oauth_flow.redirect_uri = 'postmessage'
+
+        print('Antes do step2_exchange')
         credentials = oauth_flow.step2_exchange(code)
     except FlowExchangeError:
-        response = make_response(
-            json.dumps('Failed to upgrade the authorization code.'), 401)
-        response.headers['Content-Type'] = 'application/json'
+        response = make_response(json.dumps('Failed to upgrade the authorization code.'), 401)
+        response.headers['Content-Type'] = 'application/json'        
         return response
-
+    
     # Check that the access token is valid.
-    access_token = credentials.access_token
+    access_token = credentials.access_token 
+
     url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s'
            % access_token)
     h = httplib2.Http()
@@ -62,7 +68,7 @@ def gconnect():
     if result.get('error') is not None:
         response = make_response(json.dumps(result.get('error')), 500)
         response.headers['Content-Type'] = 'application/json'
-        return response
+        return response    
 
     # Verify that the access token is used for the intended user.
     gplus_id = credentials.id_token['sub']
