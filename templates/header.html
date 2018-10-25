@@ -5,6 +5,44 @@
 		</a>
 	</div>
 	<div class="col-md-6 text-right">
-		<p>Login Link will go Here </p>
+		{% if not session.get('access_token') %}
+		<a href="{{url_for('showLogin')}}">
+			<button class="btn btn-default" id="login">
+				<span aria-hidden="true"></span>Login
+			</button>
+		</a>
+		{% else %}
+		<button class="btn btn-default" id="logoff" onclick="signOffCallback()">
+			<span aria-hidden="true"></span>Disconnect
+		</button>
+
+		{% endif %}
 	</div>
 </div>
+
+<script>
+	function signOffCallback() {		
+		$.ajax({
+			type: 'GET',
+			url: '/gdisconnect',
+			processData: false,
+			data: authResult['code'],
+			contentType: 'application/octet-stream; charset=utf-8',
+			success: function (result) {
+				// Handle or verify the server response if necessary.
+				if (result) {					
+					setTimeout(function () {
+						window.location.href = "/restaurant";
+					}, 4000);
+
+				} else if (authResult['error']) {
+					console.log('There was an error: ' + authResult['error']);
+				} else {
+					$('#result').html('Failed to make a server-side call. Check your configuration and console.');
+				}
+			}
+		});
+
+	}
+
+</script>
